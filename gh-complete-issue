@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -e
+
+help() {
+  cat <<EOF
+Usage: gh complete-issue <issue-number> [<comment>]
+
+    <issue-number>  The number of the issue to complete
+    <comment>       An optional comment to add to the issue
+
+    Example: gh complete-issue 123
+
+    Example: gh complete-issue 123 "This is a comment"
+
+    complete-issue will assign the issue to the user who created it, and add the "ready for testing" label.
+
+EOF
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -h|--help)
+      help
+      exit 0
+      ;;
+    *)
+        if [[ $1 =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+            issue=$1
+        else
+            comment=$1
+        fi
+      ;;
+    *)
+    esac
+    shift
+done
+
+creator() {
+    exec gh issue view "${issue}" --json author --template='{{.author.login}}'
+}
+edit_issue() {
+    exec gh issue edit "${issue}" --add-assignee "$(creator)" --remove-assignee "@me" --add-label "ready for testing"
+}
+comment_issue() {
+    if [ "${comment}" ]; then 
+        exec gh issue comment "${issue}" --body "${comment}"
+    fi
+}
+
+complete() {
+    local update_issue
+    update_issue="$(edit_issue)" || return 1
+    comment_issue
+}
+
+complete
+exit 0
